@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:kafka="http://www.mulesoft.org/schema/mule/kafka"
+	xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:cloudhub="http://www.mulesoft.org/schema/mule/cloudhub" xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway"
+	xmlns:cluster="http://www.mulesoft.org/schema/mule/ee/cluster" xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties"
+	xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:error-handler-plugin="http://www.mulesoft.org/schema/mule/error-handler-plugin" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd 
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd
+http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd
+http://www.mulesoft.org/schema/mule/error-handler-plugin http://www.mulesoft.org/schema/mule/error-handler-plugin/current/mule-error-handler-plugin.xsd
+http://www.mulesoft.org/schema/mule/cloudhub http://www.mulesoft.org/schema/mule/cloudhub/current/mule-cloudhub.xsd
+http://www.mulesoft.org/schema/mule/kafka http://www.mulesoft.org/schema/mule/kafka/current/mule-kafka.xsd">
+	
+	<configuration-properties doc:name="Configuration properties" doc:id="40838442-02b4-4751-871f-2271501ed722" file="properties/configuration.${mule.env}.yaml" />
+   
+	<kafka:consumer-config name="Apache_Kafka_Consumer_configuration" doc:name="Apache Kafka Consumer configuration" doc:id="3af1752d-c966-49eb-9e76-9f2c100090f9" >
+		<kafka:consumer-sasl-plain-connection username="${kafka.username}" password="${kafka.password}" endpointIdentificationAlgorithm="disabled" groupId="${kafka.consumer.group}" consumerAmount="${kafka.consumer.amount}" maximumPollingInterval="150" recordLimit="200">
+			<tls:context >
+				<tls:trust-store path="${kafka.tls.path}" password="${kafka.tls.password}" type="jks" insecure="true"/>
+			</tls:context>
+			<kafka:bootstrap-servers >
+				<kafka:bootstrap-server value="${kafka.server}" />
+			</kafka:bootstrap-servers>
+			<kafka:topic-patterns >
+				<kafka:topic-pattern value="${kafka.topic.name}" />
+			</kafka:topic-patterns>
+		</kafka:consumer-sasl-plain-connection>	</kafka:consumer-config>
+		
+	<global-property doc:name="Global Property" doc:id="4645e47e-29e7-4103-85c2-a77dc7f4806a" name="mule.env" value="dev" />
+	
+</mule>

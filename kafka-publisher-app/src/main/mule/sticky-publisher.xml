@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:kafka="http://www.mulesoft.org/schema/mule/kafka" 
+	xmlns:sftp="http://www.mulesoft.org/schema/mule/sftp"
+	xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" 
+	xmlns:error-handler-plugin="http://www.mulesoft.org/schema/mule/error-handler-plugin" 
+	xmlns:validation="http://www.mulesoft.org/schema/mule/validation" 
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" 
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" 
+	xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger" 
+	xmlns="http://www.mulesoft.org/schema/mule/core" 
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd
+http://www.mulesoft.org/schema/mule/error-handler-plugin http://www.mulesoft.org/schema/mule/error-handler-plugin/current/mule-error-handler-plugin.xsd
+http://www.mulesoft.org/schema/mule/sftp http://www.mulesoft.org/schema/mule/sftp/current/mule-sftp.xsd
+http://www.mulesoft.org/schema/mule/kafka http://www.mulesoft.org/schema/mule/kafka/current/mule-kafka.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<flow name="sticky-publisher_listener-main" doc:id="73de0c88-0afc-40ec-94f7-5cf421d3b2af" >
+		<http:listener doc:name="Listener" doc:id="2ffc4d04-500b-451c-9f1c-7d9a6165196e" config-ref="cloudhub-httpListenerConfig" path="/publish/sticky"/>
+		<flow-ref doc:name="global_compile-message-list" doc:id="22fdeb0d-bfbf-4efe-a849-0073aa58879d" name="global_compile-message-list" />
+		<flow-ref doc:name="sticky-publisher_publish-in-parallel-for-each" doc:id="36ebd318-ff9a-46f4-92d9-3b76a441be95" name="sticky-publisher_publish-in-parallel-for-each"/>
+		<ee:transform doc:name="Sort By Partition and CustomerIds" doc:id="436cf8cc-ffdd-4564-b07a-8e81369d26a5" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+(payload groupBy $.partition orderBy $$) mapObject ((value, key, index) ->
+("partition-" ++ (key)): {
+    partition: key,
+    totalmsgsPublished: sizeOf(value),
+	customerIds: value map $.customerId distinctBy $ joinBy ","
+}) pluck $]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="bc0460e4-9f16-409e-83de-4035a121ee84" type="ANY">
+				<logger level="INFO" doc:name="Logger" doc:id="4e7e3576-42c0-498a-afd2-40b267da99a7" message="Failed to publish message to kafka topic : #[vars.counter]" />
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<sub-flow name="sticky-publisher_publish-in-parallel-for-each" doc:id="497ff2ff-7414-45bc-bef8-e202758e7154" >
+		<parallel-foreach doc:name="Parallel For Each" doc:id="d35b46d3-f430-4a5f-be1c-cf953d58fae3" maxConcurrency="20">
+			<ee:transform doc:name="customerId" doc:id="2811dede-d8a0-4111-bdfa-3522b9724aa6">
+				<ee:message />
+				<ee:variables>
+					<ee:set-variable variableName="customerId"><![CDATA[%dw 2.0
+output application/java
+---
+payload.customerId]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<kafka:publish doc:name="Publish to topic" doc:id="8557bf67-f7c7-440c-b53d-681d71cba939" config-ref="Apache_Kafka_Sticky_Producer_configuration" topic="${kafka.topic.name}">
+			<reconnect />
+				<kafka:message ><![CDATA[#[%dw 2.0
+output application/json
+---
+payload]]]></kafka:message>
+		</kafka:publish>
+			<ee:transform doc:name="Map Response Metadata" doc:id="005dc362-45cb-43e9-a8dc-09cbd7aa6f8d" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	partition: payload.partition,
+	offset: payload.offset,
+	customerId: vars.customerId
+}]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+		</parallel-foreach>
+		<ee:transform doc:name="Transform Message" doc:id="d80c2e2d-541b-423b-9ad7-6e42a205f7c7">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload.payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	
+</mule>
+

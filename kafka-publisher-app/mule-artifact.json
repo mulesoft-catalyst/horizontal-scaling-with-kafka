@@ -1,0 +1,9 @@
+{
+  "minMuleVersion": "4.4.0",
+  "secureProperties": [
+    "kafka.username",
+    "kafka.password",
+    "kafka.tls.password",
+  	"mule.key"
+  ]
+}
