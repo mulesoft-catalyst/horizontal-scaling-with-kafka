@@ -1,0 +1,16 @@
+kafka:
+  server: "pkc-ep9mm.us-east-2.aws.confluent.cloud:9092" #UPDATE
+# Kafka authentication details: username and password- Add below 
+  username: "" #UPDATE
+  password: "" #UPDATE
+# Kafka Remote Server Truststore and its password 
+  tls:
+    password: "" #UPDATE
+    path: "${app.home}/ssl/confluent-use2-truststore.jks" #UPDATE
+  listener:
+    parallel: "1"
+  consumer:
+    amount: "1"
+    group: "test-kafka-consumer-grp"
+  topic:
+    name: "test-topic-five-partitions" #UPDATE
